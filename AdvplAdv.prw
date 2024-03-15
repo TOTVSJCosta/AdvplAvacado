@@ -31,9 +31,11 @@ static function MenuDef()
 
 return aRet
 
-user function ImpFIle()
-    Local cFile := cGetFile("*.*", "Selecior arquivo",,,, GETF_LOCALHARD + GETF_NETWORKDRIVE)
-    
+user function ImpFIle(aParams)
+
+    Default aParams := {"99", "01"}
+
+    Local cFile
     Local lRet      := .T.
     //Local nHandle   := FT_FUse(cFile)
     //Local nHandle   := fOpen("C:\temp\x.txt", FO_READ)
@@ -41,6 +43,18 @@ user function ImpFIle()
     //Local cTxt      AS Character
     Local cLinha    AS Character
     Local oFile     AS Object
+
+    /*isBlind()*/
+    if Select("SX2") == 0 .and. valtype(aParams) == 'A' .and. len(aParams) >= 2
+        RPCSetEnv(aParams[1], aParams[2])
+
+        cFile  := GetMV("ES_CSVFILE")
+        aFiles := {}
+        aDir(cFile + "sa19901.csv", @aFiles)
+        cFile += "sa19901.csv"
+    else
+        cFile := cGetFile("*.*", "Selecior arquivo",,,, GETF_LOCALHARD + GETF_NETWORKDRIVE)
+    endif
 
     if !empty(cFile)
         oFile  := FWFileReader():New(cFile)
@@ -55,7 +69,7 @@ user function ImpFIle()
         else
         endif
     else
-        msgAlert("Operação cancelada!")
+        msgAlert("OperaÃ§Ã£o cancelada!")
     endif
 
 /*
@@ -81,6 +95,7 @@ user function ImpFIle()
         FT_FUSE()
     endif
 */
+    if(Select("SX2") == 0, RPCClearEnv(), nil)
 
 return lRet
 
@@ -145,10 +160,11 @@ user function FakePrt()
     Local aAreaSC5  := SC5->(GetArea())
     Local aAreaSC6  := SC6->(GetArea())    
 
-    FSQL()
-    RotAut()
+    //FSQL()
+    //RotAut()
     //RotMan()
     //RotMVC()
+    U_ImpFIle({"99", "01"})
 
     RestArea(aArea)
     SC5->(RestArea(aAreaSC5))
@@ -288,10 +304,12 @@ static function RotMVC(cLinha)
     oModel:Activate()
 
     lRet := lRet .and. FWFldPut("A1_COD",       cCod)
+    lRet := lRet .and. FWFldPut("A1_LOJA",       "01")
     lRet := lRet .and. FWFldPut("A1_NOME",      ALinha[1])
     lRet := lRet .and. FWFldPut("A1_PESSOA",    ALinha[2])
     lRet := lRet .and. FWFldPut("A1_NREDUZ",    ALinha[3])
     lRet := lRet .and. FWFldPut("A1_END",       ALinha[4])
+    lRet := lRet .and. FWFldPut("A1_MUN",       ALinha[11])
     lRet := lRet .and. FWFldPut("A1_TIPO",      ALinha[6])
     lRet := lRet .and. FWFldPut("A1_EST",       ALinha[7])
     lRet := lRet .and. FWFldPut("A1_CGC",       ALinha[26])
@@ -302,7 +320,7 @@ static function RotMVC(cLinha)
 
     if !lRet
         RollBackSX8()
-        Aviso("erro MVC", varInfo("erro MVC", oModel:GetErrorMessage()), {"OK"}, 1, "Sub Título")
+        Help(,,, "IMPSA1AUT", varInfo("erro MVC", oModel:GetErrorMessage()))
     else
         ConfirmSX8()
     endif
@@ -321,3 +339,23 @@ User Function CRMA980()
     endif
 
 return xRet
+
+user function TTable()
+
+    local aFields := {}
+    local oTempTable := FWTemporaryTable():New("TTable")
+
+    aAdd(aFields, {"NOME",    "C", 50, 0})
+    aAdd(aFields, {"VALOR",   "N",  8, 2})
+    aAdd(aFields, {"EMISSAO", "D",  8, 0})
+    
+    oTempTable:SetFields(aFields)
+    oTempTable:Create()
+    
+    /*
+        Aqui vocÃª faz as suas customizaÃ§Ãµes, usando seu alias, por exemplo
+        Alert( ALIAS->NOME_DO_CAMPO )
+    */
+    
+    oTempTable:Delete()
+return
