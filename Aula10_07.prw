@@ -1,4 +1,5 @@
 #include "totvs.ch"
+#include "FWMVCDef.ch"
 
 
 user function Aula10_07()
@@ -19,9 +20,16 @@ user function Aula10_07()
 return
 
 static function MenuDef()
+    local aMenu := {}
 
-return FWMVCMenu("AULA10_07")
+    ADD OPTION aMenu Title 'Incluir'    Action "ViewDef.AULA10_07"  OPERATION 3 ACCESS 0
+    ADD OPTION aMenu Title 'Alterar'    Action "ViewDef.AULA10_07"  OPERATION 4 ACCESS 0
+    ADD OPTION aMenu Title 'Histórico'  Action 'U_Historico'        OPERATION 2 ACCESS 0
+return aMenu
 
+user function Historico()
+
+return
 
 /*/{Protheus.doc} ViewDef
     (long_description)
@@ -52,6 +60,12 @@ Static Function ViewDef()
     //oView:SetOwnerView( 'VIEW_ZA5', 'EMBAIXOESQ')
 Return oView
 
+static function WenEngine(oPanel)
+    local oWebEng := TWebEngine():New(oPanel)
+
+    oWebEng:navigate("zit.dev.br")
+    oWebEng:Align := CONTROL_ALIGN_ALLCLIENT
+Return
 
 static function ModelDef()
     local oStruZZ1  := FwFormStruct(1, "ZZ1")
