@@ -22,10 +22,17 @@ return
 static function MenuDef()
     local aMenu := {}
 
-    ADD OPTION aMenu Title 'Incluir'    Action "ViewDef.AULA10_07"  OPERATION 3 ACCESS 0
-    ADD OPTION aMenu Title 'Alterar'    Action "ViewDef.AULA10_07"  OPERATION 4 ACCESS 0
-    ADD OPTION aMenu Title 'Visualizar' Action "ViewDef.AULA10_07"  OPERATION 2 ACCESS 0
-    ADD OPTION aMenu Title 'Histórico'  Action 'U_Historico'        OPERATION 2 ACCESS 0
+    ADD OPTION aMenu Title 'Incluir'    Action "ViewDef.AULA10_07" ;
+        OPERATION MODEL_OPERATION_INSERT ACCESS 0
+
+    ADD OPTION aMenu Title 'Alterar'    Action "ViewDef.AULA10_07" ;
+        OPERATION MODEL_OPERATION_UPDATE ACCESS 0
+
+    ADD OPTION aMenu Title 'Visualizar' Action "ViewDef.AULA10_07" ;
+        OPERATION MODEL_OPERATION_VIEW ACCESS 0
+
+    ADD OPTION aMenu Title 'Histórico'  Action 'U_Historico'       ;
+        OPERATION MODEL_OPERATION_VIEW ACCESS 0
 return aMenu
 
 user function Historico()
@@ -71,8 +78,6 @@ static function ExecInt(oView)
         if ExistBlock(cNomePE)
             ExecBlock(cNomePE)
         endif
-
-
     endif
 return
 
@@ -80,9 +85,9 @@ user function IntVCEP()
     local cCEP
     local cURL := allTrim(ZZ1->ZZ1_URL)
     local oRest := FWRest():New(cURL)
-    local oWebEng := TWebEngine():New()
+    //local oWebEng := TWebEngine():New()
 
-    cCEP := FWInputBox("Insira o CEP a ser consultado", cCEP)
+    cCEP := FWInputBox("Insira o CEP a ser consultado", M->A1_CEP)
 
     oRest:SetPath('/' + cCEP + "/json")
 
@@ -98,8 +103,42 @@ user function IntVCEP()
 
 return
 
-static function GravaLog(lOK, cCEP)
-    cCEP := decodeUTF8(cCEP)
+static function GravaLog(lOK, cResult)
+/*
+    local oModel := FWLoadModel("AULA10_07")
+    local oMdlZZ2 := oModel:GetModel("ZZ2DETAIL")
+
+    oModel:SetOperation(MODEL_OPERATION_INSERT)
+    oModel:Activate()
+
+    oMdlZZ2:SetValue("ZZ2_ID", GetSX8Num("ZZ2", "ZZ2_ID"))
+    oMdlZZ2:SetValue("ZZ2_STATUS", if(lOK, 'S', 'E'))
+    oMdlZZ2:SetValue("ZZ2_DATAEX", Date())
+    oMdlZZ2:SetValue("ZZ2_HORAEX", Time())
+    oMdlZZ2:SetValue("ZZ2_TASKID", ZZ1->ZZ1_ID)
+    cResult := decodeUTF8(cResult)
+    oMdlZZ2:SetValue("ZZ2_RESULT", cResult)
+
+    if oMdlZZ2:VldData() .and. oMdlZZ2:CommitData()
+        lOK := .T.
+    else
+        lOK := .F.
+    endif
+
+    If(lOK, nil, FWAlertError(VarInfo("Erro gravação do Historico", oModel:GetErrorMessage(),, .f.)))
+
+    oModel:DeActivate()
+*/
+
+    RecLock("ZZ2", .t.)
+        ZZ2->ZZ2_FILIAL := xFilial("ZZ2")
+        ZZ2->ZZ2_ID := GetSX8Num("ZZ2", "ZZ2_ID")
+        ZZ2->ZZ2_STATUS := if(lOK, 'S', 'E')
+        ZZ2->ZZ2_DATAEX := Date()
+        ZZ2->ZZ2_HORAEX := Time()
+        ZZ2->ZZ2_TASKID := ZZ1->ZZ1_ID
+        ZZ2->ZZ2_RESULT := decodeUTF8(cResult)
+    ZZ2->(msUnlock())
 return
 
 user function IntSB1()
@@ -138,3 +177,16 @@ static function ModelDef()
     oModel:SetDescription("Integrações")
     oModel:GetModel("ZZ1MASTER"):SetDescription("Central de Integrações")
 return oModel
+
+
+user function SA1CEP()
+    cIntID := GetNewPar("ES_SA1VCEP", "001")
+
+    ZZ1->(dbSetOrder(5))
+    if ZZ1->(dbSeek(xFilial("ZZ1") + cIntID))
+        ExecInt()
+    else
+        FWAlertWarning("Não foi possível executar a integração " + cIntID, "API VIA CEP")
+    endif
+
+return .t.
