@@ -57,7 +57,45 @@ Static Function ViewDef()
 
     oView:CreateHorizontalBox('INFERIOR', 60)
     oView:SetOwnerView("VIEW_ZZ2", "INFERIOR")
+
+    oView:EnableTitleView('VIEW_ZZ2', "Historico das execuções")
+    oView:AddUserButton("Executar Integração", 'CLIPS', {|oView| ExecInt(oView)})
 Return oView
+
+static function ExecInt(oView)
+    local cNomePE := allTrim(ZZ1->ZZ1_FUNCAO)
+
+    if ZZ1->ZZ1_STATUS = 'D'
+        msgAlert("Integração está desabilitada!" + CRLF + "Não é possível executar", "Exec desabilitada")
+    else
+        if ExistBlock(cNomePE)
+            ExecBlock(cNomePE)
+        endif
+
+
+    endif
+return
+
+user function IntVCEP()
+    local cCEP
+    local cURL := allTrim(ZZ1->ZZ1_URL)
+    local oRest := FWRest():New(cURL)
+
+    cCEP := FWInputBox("Insira o CEP a ser consultado", cCEP)
+
+    oRest:SetPath('/' + cCEP + "/json")
+
+    if oRest:Get()
+        
+    else
+        msgAlert("Erro API")
+    endif
+
+return
+
+
+user function IntSB1()
+return
 
 static function WebEngine(oPanel)
     local oWebEng := TWebEngine():New(oPanel)
@@ -83,7 +121,11 @@ static function ModelDef()
 
     oModel:AddGrid("ZZ2DETAIL", 'ZZ1MASTER', oStruZZ2) 
     oModel:SetRelation('ZZ2DETAIL', {{'ZZ2_FILIAL', 'xFilial("ZZ2")'}, ;
-        {'ZZ2_TASKID', 'ZZ1_ID'}}, ZA2->(IndexKey(1)))
+        {'ZZ2_TASKID', 'ZZ1_ID'}}, ZZ2->(IndexKey(1)))
+    
+    oModel:GetModel('ZZ2DETAIL'):SetOptional(.T.)
+    oModel:GetModel('ZZ2DETAIL'):SetOnlyView (.T.)
+    //oModel:GetModel('ZZ2DETAIL'):SetOnlyQuery (.T.)
 
     oModel:SetDescription("Integrações")
     oModel:GetModel("ZZ1MASTER"):SetDescription("Central de Integrações")
