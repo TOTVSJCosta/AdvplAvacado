@@ -52,7 +52,7 @@ Static Function ViewDef()
     local oView := FWFormView():New()
     local oStruZZ1 := FWFormStruct(2, "ZZ1")
     local oStruZZ2 := FWFormStruct(2, "ZZ2")
-    local oModel := ModelDef() //FWLoadModel("AULA10_07") 
+    local oModel := ModelDef()
 
     oView:SetModel(oModel)
     oView:AddField("VIEW_ZZ1", oStruZZ1, "ZZ1MASTER")
@@ -85,7 +85,7 @@ user function IntVCEP()
     local cCEP
     local cURL := allTrim(ZZ1->ZZ1_URL)
     local oRest := FWRest():New(cURL)
-    //local oWebEng := TWebEngine():New()
+    local jVCEP
 
     cCEP := FWInputBox("Insira o CEP a ser consultado", M->A1_CEP)
 
@@ -93,8 +93,19 @@ user function IntVCEP()
 
     if oRest:Get()
         cCEP := oRest:GetResult()
-
         GravaLog(.t., cCEP)
+
+        jVCEP := jsonObject():New()
+
+        jVCEP:fromJSON(cCEP)
+
+        M->A1_END       := jVCEP["logradouro"]
+        M->A1_EST       := jVCEP["uf"]
+        M->A1_BAIRRO    := jVCEP["bairro"]
+        M->A1_CEP       := jVCEP["cep"]
+        M->A1_COD_MUN   := substr(jVCEP["ibge"], 3)
+        M->A1_MUN       := jVCEP["localidade"]
+        M->A1_IBGE      := jVCEP["ibge"]
     else
         cCEP := oRest:cResult
         msgAlert(cCEP, oRest:GetLastError())
@@ -188,5 +199,4 @@ user function SA1CEP()
     else
         FWAlertWarning("Não foi possível executar a integração " + cIntID, "API VIA CEP")
     endif
-
 return .t.
