@@ -24,6 +24,7 @@ static function MenuDef()
 
     ADD OPTION aMenu Title 'Incluir'    Action "ViewDef.AULA10_07"  OPERATION 3 ACCESS 0
     ADD OPTION aMenu Title 'Alterar'    Action "ViewDef.AULA10_07"  OPERATION 4 ACCESS 0
+    ADD OPTION aMenu Title 'Visualizar' Action "ViewDef.AULA10_07"  OPERATION 2 ACCESS 0
     ADD OPTION aMenu Title 'Histórico'  Action 'U_Historico'        OPERATION 2 ACCESS 0
 return aMenu
 
@@ -43,36 +44,46 @@ return
 Static Function ViewDef()
     local oView := FWFormView():New()
     local oStruZZ1 := FWFormStruct(2, "ZZ1")
+    local oStruZZ2 := FWFormStruct(2, "ZZ2")
     local oModel := ModelDef() //FWLoadModel("AULA10_07") 
 
     oView:SetModel(oModel)
     oView:AddField("VIEW_ZZ1", oStruZZ1, "ZZ1MASTER")
 
+    oView:AddGrid('VIEW_ZZ2', oStruZZ2, 'ZZ2DETAIL' )
+
     oView:CreateHorizontalBox("BrwZZ1" , 40)
     oView:SetOwnerView("VIEW_ZZ1", "BrwZZ1")
 
-    oView:AddOtherObject("WE_PANEL", {|oPanel| WenEngine(oPanel)})
     oView:CreateHorizontalBox('INFERIOR', 60)
-    oView:CreateVerticalBox('EMBAIXOESQ', 50, 'INFERIOR')
-    oView:CreateVerticalBox('EMBAIXODIR', 50, 'INFERIOR')
-
-    oView:SetOwnerView('WE_PANEL', 'EMBAIXODIR')
-    //oView:SetOwnerView( 'VIEW_ZA5', 'EMBAIXOESQ')
+    oView:SetOwnerView("VIEW_ZZ2", "INFERIOR")
 Return oView
 
-static function WenEngine(oPanel)
+static function WebEngine(oPanel)
     local oWebEng := TWebEngine():New(oPanel)
 
-    oWebEng:navigate("zit.dev.br")
+    oWebEng:navigate("youtube.com")
     oWebEng:Align := CONTROL_ALIGN_ALLCLIENT
 Return
 
+static function PainelLE(oPanel)
+
+    local oSEdit :=  TSimpleEditor():New(,, oPanel,,, "[ cText ]")
+    oSEdit:Align := CONTROL_ALIGN_ALLCLIENT
+
+return
+
 static function ModelDef()
     local oStruZZ1  := FwFormStruct(1, "ZZ1")
+    local oStruZZ2  := FwFormStruct(1, "ZZ2")
     local oModel    := MPFormModel():New("MD_ZZ1")
 
     oModel:AddFields("ZZ1MASTER", nil, oStruZZ1)
     oModel:SetPrimaryKey({"ZZ1_FILIAL", "ZZ1_ID"})
+
+    oModel:AddGrid("ZZ2DETAIL", 'ZZ1MASTER', oStruZZ2) 
+    oModel:SetRelation('ZZ2DETAIL', {{'ZZ2_FILIAL', 'xFilial("ZZ2")'}, ;
+        {'ZZ2_TASKID', 'ZZ1_ID'}}, ZA2->(IndexKey(1)))
 
     oModel:SetDescription("Integrações")
     oModel:GetModel("ZZ1MASTER"):SetDescription("Central de Integrações")
