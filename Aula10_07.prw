@@ -80,19 +80,27 @@ user function IntVCEP()
     local cCEP
     local cURL := allTrim(ZZ1->ZZ1_URL)
     local oRest := FWRest():New(cURL)
+    local oWebEng := TWebEngine():New()
 
     cCEP := FWInputBox("Insira o CEP a ser consultado", cCEP)
 
     oRest:SetPath('/' + cCEP + "/json")
 
     if oRest:Get()
-        
+        cCEP := oRest:GetResult()
+
+        GravaLog(.t., cCEP)
     else
-        msgAlert("Erro API")
+        cCEP := oRest:cResult
+        msgAlert(cCEP, oRest:GetLastError())
+        GravaLog(.f., cCEP)
     endif
 
 return
 
+static function GravaLog(lOK, cCEP)
+    cCEP := decodeUTF8(cCEP)
+return
 
 user function IntSB1()
 return
