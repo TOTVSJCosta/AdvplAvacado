@@ -87,27 +87,38 @@ user function IntVCEP()
     local oRest := FWRest():New(cURL)
     local jVCEP
 
-    cCEP := FWInputBox("Insira o CEP a ser consultado", M->A1_CEP)
+    //cCEP := if(FWInputBox("Insira o CEP a ser consultado", M->A1_CEP)
+
+    if !FWIsInCallStack("U_SA1CEP")
+        cCEP := FWInputBox("Insira o CEP a ser consultado")
+    else
+        cCEP := M->A1_CEP
+    endif
 
     oRest:SetPath('/' + cCEP + "/json")
 
     if oRest:Get()
-        cCEP := oRest:GetResult()
-        GravaLog(.t., cCEP)
-
+        cCEP  := decodeUTF8(oRest:GetResult())
         jVCEP := jsonObject():New()
-
         jVCEP:fromJSON(cCEP)
 
-        M->A1_END       := jVCEP["logradouro"]
-        M->A1_EST       := jVCEP["uf"]
-        M->A1_BAIRRO    := jVCEP["bairro"]
-        M->A1_CEP       := jVCEP["cep"]
-        M->A1_COD_MUN   := substr(jVCEP["ibge"], 3)
-        M->A1_MUN       := jVCEP["localidade"]
-        M->A1_IBGE      := jVCEP["ibge"]
+        if !jVCEP:hasProperty("erro")
+            FWFldPut("A1_END", jVCEP["logradouro"])
+            FWFldPut("A1_EST", jVCEP["uf"])
+            FWFldPut("A1_BAIRRO", jVCEP["bairro"])
+            FWFldPut("A1_COD_MUN", substr(jVCEP["ibge"], 3))
+            FWFldPut("A1_MUN", jVCEP["localidade"])
+            FWFldPut("A1_IBGE", jVCEP["ibge"])
+            FWFldPut("A1_COMPLEM", jVCEP["complemento"])
+            FWFldPut("A1_DDD", jVCEP["ddd"])
+            GravaLog(.t., cCEP)
+        else
+            cCEP := "CEP nao localizado: " + M->A1_CEP
+            Aviso("API ViaCEP", cCEP)
+            GravaLog(.f., cCEP)
+        endif
     else
-        cCEP := oRest:cResult
+        cCEP := decodeUTF8(oRest:cResult)
         msgAlert(cCEP, oRest:GetLastError())
         GravaLog(.f., cCEP)
     endif
@@ -127,7 +138,6 @@ static function GravaLog(lOK, cResult)
     oMdlZZ2:SetValue("ZZ2_DATAEX", Date())
     oMdlZZ2:SetValue("ZZ2_HORAEX", Time())
     oMdlZZ2:SetValue("ZZ2_TASKID", ZZ1->ZZ1_ID)
-    cResult := decodeUTF8(cResult)
     oMdlZZ2:SetValue("ZZ2_RESULT", cResult)
 
     if oMdlZZ2:VldData() .and. oMdlZZ2:CommitData()
@@ -148,7 +158,7 @@ static function GravaLog(lOK, cResult)
         ZZ2->ZZ2_DATAEX := Date()
         ZZ2->ZZ2_HORAEX := Time()
         ZZ2->ZZ2_TASKID := ZZ1->ZZ1_ID
-        ZZ2->ZZ2_RESULT := decodeUTF8(cResult)
+        ZZ2->ZZ2_RESULT := cResult
     ZZ2->(msUnlock())
 return
 
