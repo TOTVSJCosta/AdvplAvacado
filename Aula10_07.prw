@@ -186,7 +186,7 @@ return
 
 static function ArqCSV()
     local oFile := FWFileReader():New(alltrim(ZZ1->ZZ1_URL))
-    local cLinha, aLinha, nLinhas, aLinhas, nI
+    local aLinha, nLinhas, aLinhas, nI
 
     if (oFile:Open())
         SB1->(dbSetOrder(1))
@@ -196,7 +196,6 @@ static function ArqCSV()
         ProcRegua(nLinhas)
 
         for nI := 1 to nLinhas
-            //cLinha := aLinhas[nI]
             aLinha := Separa(aLinhas[nI], ';')
 
             IncProc("Gravando produto " + aLinha[1] + "...")
@@ -205,7 +204,7 @@ static function ArqCSV()
                 alert("duplicidade")
                 GravaLog(.f., "duplicidade " + aLinha[1])
             else
-                GravaSB1(cLinha, aLinha)
+                GravaSB1(aLinhas[nI], aLinha)
             endif
         next nI
         oFile:Close()
