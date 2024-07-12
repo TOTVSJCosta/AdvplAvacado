@@ -165,7 +165,7 @@ static function GravaLog(lOK, cResult)
 
 	If(lOK, nil, FWAlertError(VarInfo("Erro gravação do Historico", oModel:GetErrorMessage(),, .f.)))
 
-		oModel:DeActivate()
+    oModel:DeActivate()
 
 /*
     RecLock("ZZ2", .t.)
@@ -181,29 +181,33 @@ static function GravaLog(lOK, cResult)
 		return
 
 user function IntSB1()
-
-	MsAguarde({|| ArqCSV()}, "Aguarde...", "Processando Registros...")
-
+    Processa({|| ArqCSV()}, "Importando produtos...") 
 return
 
 static function ArqCSV()
     local oFile := FWFileReader():New(alltrim(ZZ1->ZZ1_URL))
-    local cLinha, aLinha
+    local cLinha, aLinha, nLinhas, aLinhas, nI
 
     if (oFile:Open())
         SB1->(dbSetOrder(1))
 
-        while (oFile:hasLine())
-            cLinha := oFile:GetLine()
-            aLinha := Separa(cLinha, ';')
+        nLinhas := len(aLinhas := oFile:getAllLines())
+
+        ProcRegua(nLinhas)
+
+        for nI := 1 to nLinhas
+            //cLinha := aLinhas[nI]
+            aLinha := Separa(aLinhas[nI], ';')
+
+            IncProc("Gravando produto " + aLinha[1] + "...")
 
             if sb1->(dbSeek(xFilial("SB1") + aLinha[1]))
                 alert("duplicidade")
                 GravaLog(.f., "duplicidade " + aLinha[1])
             else
-                Processa({|| GravaSB1(cLinha, aLinha)}, "Importando produtos...")
+                GravaSB1(cLinha, aLinha)
             endif
-        end
+        next nI
         oFile:Close()
     else
         GravaLog(.f., 'cCEP')
@@ -213,9 +217,6 @@ return
 static function GravaSB1(cLinha, aLinha)
     local oModel
     local cTipoGrv := GetNewPar("ES_B1TPGRV", 'AUTO')
-
-    //ProcRegua(50)
-    IncProc("Gravando produto " + aLinha[1] + "...")
 
     if cTipoGrv != "AUTO"
         recLock("SB1", .t.)
@@ -227,7 +228,7 @@ static function GravaSB1(cLinha, aLinha)
             SB1->B1_LOCPAD    := aLinha[5]
             SB1->B1_GRUPO    := aLinha[6]
             SB1->B1_PRV1    := val(strTran(aLinha[7], ',', '.'))
-            SB1->B1_ucalstd    := if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8]))
+            //SB1->B1_ucalstd    := if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8]))
             SB1->B1_MSBLQL := '1'
         sb1->(msUnlock())
     else
@@ -243,8 +244,7 @@ static function GravaSB1(cLinha, aLinha)
         FWFldPut("B1_LOCPAD", aLinha[5])
         FWFldPut("B1_GRUPO", aLinha[6])
         FWFldPut("B1_PRV1", val(strTran(aLinha[7], ',', '.')))
-        FWFldPut("B1_ucalstd", if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8])))
-        FWFldPut("B1_MSBLQL", '2')
+        //FWFldPut("B1_ucalstd", if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8])))
 
         if oModel:VldData() .and. oModel:CommitData()
             lOK := .T.
@@ -280,5 +280,25 @@ user function SA1CEP()
 		ExecInt()
 	else
 		FWAlertWarning("Não foi possível executar a integração " + cIntID, "API VIA CEP")
+	endif
+return .t.
+
+
+user function ITEM()
+    local cIDPE := PARAMIXB[2]
+    local xRet := .t.
+
+    if cIDPE == "BUTTONBAR"
+        xRet := {}
+        aAdd(xRet, {"Importar produtos", 'LOK', {|| SB1Bt()}})
+    endif
+return xRet
+
+static function SB1Bt()
+	ZZ1->(dbSetOrder(5))
+	if ZZ1->(dbSeek(xFilial("ZZ1") + "002"))
+		ExecInt()
+	else
+		FWAlertWarning("Não foi possível executar a integração 002", "SB1 x CSV")
 	endif
 return .t.
