@@ -39,6 +39,26 @@ user function Historico()
 
 return
 
+static function ModelDef()
+    local oStruZZ1  := FwFormStruct(1, "ZZ1")
+    local oStruZZ2  := FwFormStruct(1, "ZZ2")
+    local oModel    := MPFormModel():New("MD_ZZ1")
+
+    oModel:AddFields("ZZ1MASTER", nil, oStruZZ1)
+    oModel:SetPrimaryKey({"ZZ1_FILIAL", "ZZ1_ID"})
+
+    oModel:AddGrid("ZZ2DETAIL", 'ZZ1MASTER', oStruZZ2) 
+    oModel:SetRelation('ZZ2DETAIL', {{'ZZ2_FILIAL', 'xFilial("ZZ2")'}, ;
+        {'ZZ2_TASKID', 'ZZ1_ID'}}, ZZ2->(IndexKey(1)))
+    
+    oModel:GetModel('ZZ2DETAIL'):SetOptional(.T.)
+    oModel:GetModel('ZZ2DETAIL'):SetOnlyView (.T.)
+    //oModel:GetModel('ZZ2DETAIL'):SetOnlyQuery (.T.)
+
+    oModel:SetDescription("Integrações")
+    oModel:GetModel("ZZ1MASTER"):SetDescription("Central de Integrações")
+return oModel
+
 /*/{Protheus.doc} ViewDef
     (long_description)
     @type  Static Function
@@ -126,21 +146,18 @@ user function IntVCEP()
 return
 
 static function GravaLog(lOK, cResult)
-/*
-    local oModel := FWLoadModel("AULA10_07")
-    local oMdlZZ2 := oModel:GetModel("ZZ2DETAIL")
+    local oModel := FWLoadModel("MVCZZ2")
 
     oModel:SetOperation(MODEL_OPERATION_INSERT)
     oModel:Activate()
 
-    oMdlZZ2:SetValue("ZZ2_ID", GetSX8Num("ZZ2", "ZZ2_ID"))
-    oMdlZZ2:SetValue("ZZ2_STATUS", if(lOK, 'S', 'E'))
-    oMdlZZ2:SetValue("ZZ2_DATAEX", Date())
-    oMdlZZ2:SetValue("ZZ2_HORAEX", Time())
-    oMdlZZ2:SetValue("ZZ2_TASKID", ZZ1->ZZ1_ID)
-    oMdlZZ2:SetValue("ZZ2_RESULT", cResult)
+    FWFldPut("ZZ2_STATUS", if(lOK, 'S', 'E'))
+    FWFldPut("ZZ2_DATAEX", Date())
+    FWFldPut("ZZ2_HORAEX", Time())
+    FWFldPut("ZZ2_TASKID", ZZ1->ZZ1_ID)
+    FWFldPut("ZZ2_RESULT", cResult)
 
-    if oMdlZZ2:VldData() .and. oMdlZZ2:CommitData()
+    if oModel:VldData() .and. oModel:CommitData()
         lOK := .T.
     else
         lOK := .F.
@@ -149,8 +166,8 @@ static function GravaLog(lOK, cResult)
     If(lOK, nil, FWAlertError(VarInfo("Erro gravação do Historico", oModel:GetErrorMessage(),, .f.)))
 
     oModel:DeActivate()
-*/
 
+/*
     RecLock("ZZ2", .t.)
         ZZ2->ZZ2_FILIAL := xFilial("ZZ2")
         ZZ2->ZZ2_ID := GetSX8Num("ZZ2", "ZZ2_ID")
@@ -160,6 +177,7 @@ static function GravaLog(lOK, cResult)
         ZZ2->ZZ2_TASKID := ZZ1->ZZ1_ID
         ZZ2->ZZ2_RESULT := cResult
     ZZ2->(msUnlock())
+*/
 return
 
 user function IntSB1()
@@ -178,27 +196,6 @@ static function PainelLE(oPanel)
     oSEdit:Align := CONTROL_ALIGN_ALLCLIENT
 
 return
-
-static function ModelDef()
-    local oStruZZ1  := FwFormStruct(1, "ZZ1")
-    local oStruZZ2  := FwFormStruct(1, "ZZ2")
-    local oModel    := MPFormModel():New("MD_ZZ1")
-
-    oModel:AddFields("ZZ1MASTER", nil, oStruZZ1)
-    oModel:SetPrimaryKey({"ZZ1_FILIAL", "ZZ1_ID"})
-
-    oModel:AddGrid("ZZ2DETAIL", 'ZZ1MASTER', oStruZZ2) 
-    oModel:SetRelation('ZZ2DETAIL', {{'ZZ2_FILIAL', 'xFilial("ZZ2")'}, ;
-        {'ZZ2_TASKID', 'ZZ1_ID'}}, ZZ2->(IndexKey(1)))
-    
-    oModel:GetModel('ZZ2DETAIL'):SetOptional(.T.)
-    oModel:GetModel('ZZ2DETAIL'):SetOnlyView (.T.)
-    //oModel:GetModel('ZZ2DETAIL'):SetOnlyQuery (.T.)
-
-    oModel:SetDescription("Integrações")
-    oModel:GetModel("ZZ1MASTER"):SetDescription("Central de Integrações")
-return oModel
-
 
 user function SA1CEP()
     cIntID := GetNewPar("ES_SA1VCEP", "001")
