@@ -91,38 +91,48 @@ Return oView
 
 static function ExecInt(oView)
 	local cNomePE := allTrim(ZZ1->ZZ1_FUNCAO)
+	local cURL := allTrim(ZZ1->ZZ1_URL)
+    local oFile := FWFileReader():New(cURL)
+	local oRest := FWRest():New(cURL)
+	local lOk := .f.
 
 	if ZZ1->ZZ1_STATUS = 'D'
 		msgAlert("Integração está desabilitada!" + CRLF + "Não é possível executar", "Exec desabilitada")
 	else
 		if ExistBlock(cNomePE)
-			ExecBlock(cNomePE)
+			ExecBlock(cNomePE,,, {oFile, oRest})
 		endif
+		do case
+			case ZZ1->ZZ1_METODO = 'A'
+				cURL := if(lOk := oFile:Open(), 'oFile:fullRead()', oFile:OERROLOG:MESSAGE)
+
+			case ZZ1->ZZ1_METODO = 'G'
+				cURL := decodeUTF8(if(lOk := oRest:Get(), oRest:GetResult(), oRest:GetLastError()))
+
+			case ZZ1->ZZ1_METODO = 'P'
+			case ZZ1->ZZ1_METODO = 'U'
+			case ZZ1->ZZ1_METODO = 'D'
+		end case
+		if ExistBlock(cNomePE)
+			lOk := ExecBlock(cNomePE,,, {lOk, cURL, oFile, oRest})
+		endif
+		GravaLog(lOk, cURL)
 	endif
+	oFile:Close()
+	freeObj(oRest)
+	freeObj(oFile)
 return
 
 user function IntVCEP()
 	local cCEP
-	local cURL := allTrim(ZZ1->ZZ1_URL)
-	local oRest := FWRest():New(cURL)
 	local jVCEP
 
-	//cCEP := if(!FWIsInCallStack("U_SA1CEP"), FWInputBox("Insira o CEP a ser consultado"), M->A1_CEP)
-
-	if !FWIsInCallStack("U_SA1CEP")
-		cCEP := FWInputBox("Insira o CEP a ser consultado")
-	else
-		cCEP := M->A1_CEP
-	endif
-
-	oRest:SetPath('/' + cCEP + "/json")
-
-	if oRest:Get()
-		cCEP  := decodeUTF8(oRest:GetResult())
+	if type("PARAMIXB[1]") = 'L'
+		cCEP  := PARAMIXB[2]
 		jVCEP := jsonObject():New()
 		jVCEP:fromJSON(cCEP)
 
-		if !jVCEP:hasProperty("erro")
+		if PARAMIXB[1] .and. !jVCEP:hasProperty("erro")
 			FWFldPut("A1_END", jVCEP["logradouro"])
 			FWFldPut("A1_EST", jVCEP["uf"])
 			FWFldPut("A1_BAIRRO", jVCEP["bairro"])
@@ -131,18 +141,18 @@ user function IntVCEP()
 			FWFldPut("A1_IBGE", jVCEP["ibge"])
 			FWFldPut("A1_COMPLEM", jVCEP["complemento"])
 			FWFldPut("A1_DDD", jVCEP["ddd"])
-			GravaLog(.t., cCEP)
 		else
-			cCEP := "CEP nao localizado: " + M->A1_CEP
-			Aviso("API ViaCEP", cCEP)
-			GravaLog(.f., cCEP)
+			PARAMIXB[1] := .f.
+			PARAMIXB[2] := "CEP nao localizado!"
+			Aviso("API ViaCEP", PARAMIXB[2])
 		endif
+		return PARAMIXB[1]
+	elseif !FWIsInCallStack("U_SA1CEP")
+		cCEP := FWInputBox("Insira o CEP a ser consultado")
 	else
-		cCEP := decodeUTF8(oRest:cResult)
-		msgAlert(cCEP, oRest:GetLastError())
-		GravaLog(.f., cCEP)
+		cCEP := M->A1_CEP
 	endif
-
+	PARAMIXB[2]:SetPath('/' + cCEP + "/json")
 return
 
 static function GravaLog(lOK, cResult)
@@ -162,15 +172,13 @@ static function GravaLog(lOK, cResult)
 	else
 		lOK := .F.
 	endif
-
 	If(lOK, nil, FWAlertError(VarInfo("Erro gravação do Historico", oModel:GetErrorMessage(),, .f.)))
 
     oModel:DeActivate()
-
 /*
     RecLock("ZZ2", .t.)
         ZZ2->ZZ2_FILIAL := xFilial("ZZ2")
-        ZZ2->ZZ2_ID := GetSX8Num("ZZ2", "ZZ2_ID")
+        ZZ2->ZZ2_ID 	:= GetSX8Num("ZZ2", "ZZ2_ID")
         ZZ2->ZZ2_STATUS := if(lOK, 'S', 'E')
         ZZ2->ZZ2_DATAEX := Date()
         ZZ2->ZZ2_HORAEX := Time()
@@ -178,39 +186,35 @@ static function GravaLog(lOK, cResult)
         ZZ2->ZZ2_RESULT := cResult
     ZZ2->(msUnlock())
 */
-		return
+return
 
 user function IntSB1()
     Processa({|| ArqCSV()}, "Importando produtos...") 
-return
+return PARAMIXB[1]
 
 static function ArqCSV()
-    local oFile := FWFileReader():New(alltrim(ZZ1->ZZ1_URL))
     local aLinha, nLinhas, aLinhas, nI
 
-    if (oFile:Open())
+	if type("PARAMIXB[1]") = 'L' .and. PARAMIXB[1]
         SB1->(dbSetOrder(1))
 
-        nLinhas := len(aLinhas := oFile:getAllLines())
+		nLinhas := len(aLinhas := PARAMIXB[3]:getAllLines())
 
-        ProcRegua(nLinhas)
+		ProcRegua(nLinhas)
 
-        for nI := 1 to nLinhas
-            aLinha := Separa(aLinhas[nI], ';')
+		for nI := 1 to nLinhas
+			aLinha := Separa(aLinhas[nI], ';')
 
-            IncProc("Gravando produto " + aLinha[1] + "...")
+			IncProc("Gravando produto " + aLinha[1] + "...")
 
-            if sb1->(dbSeek(xFilial("SB1") + aLinha[1]))
-                alert("duplicidade")
-                GravaLog(.f., "duplicidade " + aLinha[1])
-            else
-                GravaSB1(aLinhas[nI], aLinha)
-            endif
-        next nI
-        oFile:Close()
-    else
-        GravaLog(.f., 'cCEP')
-    endif
+			if sb1->(dbSeek(xFilial("SB1") + aLinha[1]))
+				alert("duplicidade")
+				GravaLog(.f., "duplicidade " + aLinha[1])
+			else
+				GravaSB1(aLinhas[nI], aLinha)
+			endif
+		next nI
+	endif
 return
 
 static function GravaSB1(cLinha, aLinha)
@@ -227,7 +231,7 @@ static function GravaSB1(cLinha, aLinha)
             SB1->B1_LOCPAD    := aLinha[5]
             SB1->B1_GRUPO    := aLinha[6]
             SB1->B1_PRV1    := val(strTran(aLinha[7], ',', '.'))
-            //SB1->B1_ucalstd    := if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8]))
+            SB1->B1_ucalstd    := if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8]))
             SB1->B1_MSBLQL := '1'
         sb1->(msUnlock())
     else
@@ -243,7 +247,7 @@ static function GravaSB1(cLinha, aLinha)
         FWFldPut("B1_LOCPAD", aLinha[5])
         FWFldPut("B1_GRUPO", aLinha[6])
         FWFldPut("B1_PRV1", val(strTran(aLinha[7], ',', '.')))
-        //FWFldPut("B1_ucalstd", if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8])))
+        FWFldPut("B1_ucalstd", if(aLinha[8] $ '/', CtoD(aLinha[8]), StoD(aLinha[8])))
 
         if oModel:VldData() .and. oModel:CommitData()
             lOK := .T.
@@ -274,14 +278,13 @@ return
 user function SA1CEP()
 	cIntID := GetNewPar("ES_SA1VCEP", "001")
 
-	ZZ1->(dbSetOrder(5))
+	ZZ1->(dbSetOrder(1))
 	if ZZ1->(dbSeek(xFilial("ZZ1") + cIntID))
 		ExecInt()
 	else
 		FWAlertWarning("Não foi possível executar a integração " + cIntID, "API VIA CEP")
 	endif
 return .t.
-
 
 user function ITEM()
     local cIDPE := PARAMIXB[2]
